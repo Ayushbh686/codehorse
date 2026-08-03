@@ -14,6 +14,7 @@ import { ExternalLink, Star, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRepositories } from "@/module/repository/hooks/use-repositories";
 import { RepositoryListSkeleton } from "@/module/repository/components/repository-skeleton";
+import { useConnectRepository } from "@/module/repository/hooks/use-connect-repository";
 
 interface Repository {
   id: number;
@@ -36,6 +37,8 @@ const RepositoryPage = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useRepositories();
+
+  const { mutate: connectRepo } = useConnectRepository();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [connectingId, setConnectingId] = useState<number | null>(null);
@@ -97,7 +100,23 @@ const RepositoryPage = () => {
       repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleConnect = (repo: Repository) => {};
+  const handleConnect = (repo: Repository) => {
+    const [owner, repoName] = repo.full_name.split("/");
+    if (!owner || !repoName) return;
+
+    setConnectingId(repo.id);
+
+    connectRepo(
+      {
+        owner,
+        repo: repoName,
+        githubId: repo.id,
+      },
+      {
+        onSettled: () => setConnectingId(null),
+      },
+    );
+  };
 
   return (
     <div className="space-y-4">
