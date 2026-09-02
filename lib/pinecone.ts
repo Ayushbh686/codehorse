@@ -5,4 +5,4 @@ export const pinecone = new Pinecone({
 
 })
 
-export const pineconeIndex = pinecone.index({name : "codehorse-vector-embeddings"});
+export const pineconeIndex = pinecone.index({name : "codehorse-vector-embeddings-v1"});
