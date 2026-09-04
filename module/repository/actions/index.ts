@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { createWebhook, getRepositories } from "@/module/github/lib/github";
 import { inngest } from "@/inngest/client";
+import { canConnectRepository, incrementRepositoryCount } from "@/module/payment/lib/subscription";
 
 export const fetchRepositories = async (
   page: number = 1,
@@ -50,6 +51,11 @@ export const connectRepository = async (
   }
 
   //   todo if user connect to more repo
+  const canConnect = await canConnectRepository(session.user.id);
+
+  if(!canConnect){
+    throw new Error("Repository Limit Reached. Please upgrade to Pro for unlimited repositories");
+  }
 
   const webhook = await createWebhook(owner, repo);
 
@@ -67,6 +73,7 @@ export const connectRepository = async (
   }
 
   // TODO INCREMENT COUNT
+  await incrementRepositoryCount(session.user.id);
 
   //DONE TRIGGER REPO INDEXING FROM RAG ( FIRE AND FORGET ) 
 
