@@ -5,6 +5,8 @@ import { headers } from "next/headers";
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { deleteWebhook } from "@/module/github/lib/github";
+import { decrementRepositoryCount } from "@/module/payment/lib/subscription";
+import { deleteRepositoryFromPinecone } from "@/module/ai/lib/rag";
 
 export async function getUserProfile() {
   try {
@@ -141,6 +143,11 @@ export const disconnectRepo = async (repositoryId: string) => {
       },
     });
 
+    // Decrement repository count for usage tracking
+    await decrementRepositoryCount(session.user.id);
+    // Delete repository vectors from Pinecone
+    await deleteRepositoryFromPinecone(repository.fullName);
+
     revalidatePath("/dashboard/settings", "page");
     revalidatePath("/dashboard/repository", "page");
 
@@ -177,12 +184,21 @@ export const disconnectAllRepos = async () => {
     await Promise.all(
       repositories.map(async (repo) => {
         await deleteWebhook(repo.owner, repo.name);
+        await deleteRepositoryFromPinecone(repo.fullName);
       }),
     );
 
     const result = await prisma.repository.deleteMany({
       where: {
         userId: session.user.id,
+      },
+    });
+
+    // Decrement repository count to zero for usage tracking
+    await prisma.userUsage.update({
+      where: { userId: session.user.id },
+      data: {
+        repositoryCount: 0,
       },
     });
 

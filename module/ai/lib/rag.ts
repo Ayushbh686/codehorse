@@ -79,3 +79,19 @@ export async function retrieveContext(
     .map((match) => match.metadata?.content as string)
     .filter(Boolean);
 }
+
+export const deleteRepositoryFromPinecone = async (repoId: string) => {
+  try {
+    await pineconeIndex.deleteMany({
+      filter: {
+        repoId: {
+          $eq: repoId,
+        },
+      },
+    });
+
+    console.log(`Deleted vectors for repo ${repoId}`);
+  } catch (error) {
+    console.error("Failed to delete repository from Pinecone:", error);
+  }
+};

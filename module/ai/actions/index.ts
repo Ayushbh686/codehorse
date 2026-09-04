@@ -3,6 +3,8 @@
 import { inngest } from "@/inngest/client";
 import prisma from "@/lib/db";
 import { getPullrequestDiff } from "@/module/github/lib/github";
+import { cancreateReview, incrementReviewCount } from "@/module/payment/lib/subscription";
+import { success } from "better-auth";
 
 export async function reviewPullRequest(
   owner: string,
@@ -32,6 +34,13 @@ export async function reviewPullRequest(
       throw new Error("Repository not found");
     }
 
+    const canReview = await cancreateReview(repository.user.id, repository.id);
+    if (!canReview) {
+      throw new Error(
+        `Review limit reached for repository ${owner}/${repo}. Please upgrade your subscription or wait until the limit resets.`,
+      );
+    }
+
     const githubAccount = repository.user.accounts[0];
 
     if (!githubAccount?.accessToken) {
@@ -52,6 +61,10 @@ export async function reviewPullRequest(
         userId: repository.user.id,
       },
     });
+
+    await incrementReviewCount(repository.user.id , repository.id);
+
+    return {success : true , message : "Review Queued"}
   } catch (error) {
     try {
       const repository = await prisma.repository.findFirst({
